@@ -84,7 +84,7 @@ const App: React.FC = () => {
   }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
+    return [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
                            t.category.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'All' || t.category === filterCategory;
@@ -105,13 +105,16 @@ const App: React.FC = () => {
   };
 
   const handleAddOrUpdate = (t: Transaction) => {
-    let newTransactions;
-    if (editingTransaction) {
-      newTransactions = transactions.map(item => item.id === t.id ? t : item);
-    } else {
-      newTransactions = [t, ...transactions];
-    }
-    updateActiveLedger({ transactions: newTransactions });
+    setLedgers(prev => prev.map(l => {
+      if (l.id !== activeLedgerId) return l;
+      let newTransactions;
+      if (editingTransaction) {
+        newTransactions = l.transactions.map(item => item.id === t.id ? t : item);
+      } else {
+        newTransactions = [t, ...l.transactions];
+      }
+      return { ...l, transactions: newTransactions };
+    }));
     setEditingTransaction(undefined);
   };
 
@@ -121,7 +124,13 @@ const App: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (window.confirm('确定要删除这笔账目吗？')) {
-      updateActiveLedger({ transactions: transactions.filter(t => t.id !== id) });
+      setLedgers(prev => prev.map(l => {
+        if (l.id !== activeLedgerId) return l;
+        return {
+          ...l,
+          transactions: l.transactions.filter(t => t.id !== id)
+        };
+      }));
     }
   };
 
@@ -136,7 +145,7 @@ const App: React.FC = () => {
       categories: DEFAULT_CATEGORIES,
       transactions: []
     };
-    setLedgers([...ledgers, newL]);
+    setLedgers(prev => [...prev, newL]);
     setActiveLedgerId(newL.id);
     setIsLedgerModalOpen(false);
     setNewLedgerName('');
@@ -317,7 +326,7 @@ const App: React.FC = () => {
                           </p>
                           <p className="text-xs text-slate-400 max-w-[120px] truncate">{t.description}</p>
                         </div>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-2 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => {setEditingTransaction(t); setIsFormOpen(true);}} className="p-2 text-blue-500 hover:scale-110 active:scale-95"><i className="fa-solid fa-pen"></i></button>
                           <button onClick={() => handleDelete(t.id)} className="p-2 text-red-500 hover:scale-110 active:scale-95"><i className="fa-solid fa-trash"></i></button>
                         </div>
