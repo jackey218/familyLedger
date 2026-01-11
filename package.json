@@ -2,10 +2,12 @@
 {
   "name": "family-ledger",
   "version": "1.0.0",
-  "description": "Family Ledger deployed on Cloudflare Pages",
+  "description": "Family Ledger for Cloudflare Pages",
   "scripts": {
-    "build": "echo 'No build needed, static assets ready.'"
+    "build": "sed -i \"s/YOUR_API_KEY_PLACEHOLDER/\"$API_KEY\"/g\" services/geminiService.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@google/genai": "^1.35.0"
+  },
   "devDependencies": {}
 }

@@ -2,21 +2,21 @@
 import { GoogleGenAI } from "@google/genai";
 import { Transaction } from "../types";
 
-// 兼容 Cloudflare Pages 部署环境
-// 在 Cloudflare 控制台 Settings -> Environment Variables 中设置 API_KEY
+/**
+ * 获取 API Key 的逻辑
+ * 1. 尝试从 Cloudflare 构建时可能注入的地方读取
+ * 2. 这里的 process.env.API_KEY 会在 Cloudflare 构建命令中被 sed 指令替换（见下文说明）
+ */
 const getApiKey = () => {
-  try {
-    return process.env.API_KEY || (window as any)._env_?.API_KEY || '';
-  } catch {
-    return '';
-  }
+  // @ts-ignore
+  return (typeof process !== 'undefined' && process.env?.API_KEY) || '';
 };
 
 export const analyzeFinances = async (transactions: Transaction[]) => {
   const apiKey = getApiKey();
   
-  if (!apiKey) {
-    return "未检测到 API Key。请在 Cloudflare Pages 后台设置名为 API_KEY 的环境变量，然后重新部署。";
+  if (!apiKey || apiKey === "YOUR_API_KEY_PLACEHOLDER") {
+    return "⚠️ 缺少 API Key！\n\n【配置方法】：\n1. 登录 Cloudflare 控制台\n2. 进入项目 Settings -> Environment variables\n3. 添加变量 API_KEY\n4. 在 Build Command 填写：sed -i \"s/YOUR_API_KEY_PLACEHOLDER/\"$API_KEY\"/g\" services/geminiService.ts\n5. 重新部署。";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -25,14 +25,11 @@ export const analyzeFinances = async (transactions: Transaction[]) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `这是我家庭最近的记账数据：\n${summary}\n\n请根据这些数据提供专业的家庭理财建议、消费习惯分析以及改进建议。请用亲切友好的口吻回答，字数在300字以内。`,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
+      contents: `你是一个专业的家庭理财管家。这是我家的账单：\n${summary}\n\n请分析消费结构，指出不合理支出，并给出具体的省钱建议。请用活泼的口吻，多用 Emoji，300字以内。`,
     });
-    return response.text || "暂时无法生成分析建议。";
+    return response.text || "AI 忙碌中，请稍后再试。";
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    return "AI分析请求失败，请检查 API Key 权限或网络连接。";
+    console.error("Gemini Error:", error);
+    return "分析失败：请检查 API Key 是否有效或网络是否畅通。";
   }
 };
