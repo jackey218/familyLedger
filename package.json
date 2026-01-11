@@ -3,9 +3,6 @@
   "name": "family-ledger",
   "version": "1.0.0",
   "description": "Family Ledger for Cloudflare Pages",
-  "scripts": {
-    "build": "if [ ! -z \"$API_KEY\" ]; then sed -i \"s|YOUR_API_KEY_PLACEHOLDER|$API_KEY|g\" services/geminiService.ts; else echo 'Warning: API_KEY not found, skipping injection'; fi"
-  },
   "dependencies": {
     "@google/genai": "^1.35.0"
   },
