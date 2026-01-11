@@ -2,27 +2,30 @@
 import { GoogleGenAI } from "@google/genai";
 import { Transaction } from "../types";
 
-// 这个值会在 Cloudflare 构建时被 package.json 里的 sed 命令替换
+// 这个值会在 Cloudflare 构建时被 package.json 里的 sed 命令尝试替换
 const API_KEY_VALUE = "YOUR_API_KEY_PLACEHOLDER";
 
 const getApiKey = () => {
-  // 优先尝试直接读取替换后的值，如果没有替换成功，尝试读取 process.env（本地环境）
+  // 1. 优先尝试物理替换后的值
   if (API_KEY_VALUE && API_KEY_VALUE !== "YOUR_API_KEY_PLACEHOLDER") {
     return API_KEY_VALUE;
   }
+  
+  // 2. 尝试从 Cloudflare 的 process.env 读取 (有些环境下可行)
   try {
     // @ts-ignore
-    return (typeof process !== 'undefined' && process.env?.API_KEY) || '';
-  } catch {
-    return '';
-  }
+    const envKey = typeof process !== 'undefined' ? process.env?.API_KEY : null;
+    if (envKey) return envKey;
+  } catch (e) {}
+
+  return '';
 };
 
 export const analyzeFinances = async (transactions: Transaction[]) => {
   const apiKey = getApiKey();
   
   if (!apiKey || apiKey === "YOUR_API_KEY_PLACEHOLDER") {
-    return "⚠️ 账本未关联 AI 服务。\n\n【小白配置指南】：\n1. 在 Cloudflare Pages 变量设置中添加 API_KEY。\n2. 确保 Build Command 设置为 npm run build。\n3. 重新部署以激活 AI 助手。";
+    return "⚠️ 账本未关联 AI 服务。\n\n【排查步骤】：\n1. 检查 Cloudflare 环境变量中是否添加了 API_KEY。\n2. 确保 Build Command 是 npm run build。\n3. 如果依然报错，请手动在 Cloudflare 设置中检查变量名称大小写。";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -34,8 +37,10 @@ export const analyzeFinances = async (transactions: Transaction[]) => {
       contents: `你是一个专业的家庭理财管家。这是我家的账目数据：\n${summary}\n\n请分析支出结构，指出潜在的浪费，并给出省钱建议。请用亲切的口吻，多用 Emoji，300字以内。`,
     });
     return response.text || "AI 正在思考，请稍后再试。";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Error:", error);
-    return "分析请求失败。请检查 API Key 权限或网络连接。";
+    if (error?.message?.includes('403')) return "错误 403：API Key 无效或地区受限。";
+    if (error?.message?.includes('429')) return "错误 429：请求太频繁，请稍后再试。";
+    return `分析失败：${error?.message || '未知错误'}`;
   }
 };
