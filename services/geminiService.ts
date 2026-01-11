@@ -2,21 +2,27 @@
 import { GoogleGenAI } from "@google/genai";
 import { Transaction } from "../types";
 
-/**
- * 获取 API Key 的逻辑
- * 1. 尝试从 Cloudflare 构建时可能注入的地方读取
- * 2. 这里的 process.env.API_KEY 会在 Cloudflare 构建命令中被 sed 指令替换（见下文说明）
- */
+// 这个值会在 Cloudflare 构建时被 package.json 里的 sed 命令替换
+const API_KEY_VALUE = "YOUR_API_KEY_PLACEHOLDER";
+
 const getApiKey = () => {
-  // @ts-ignore
-  return (typeof process !== 'undefined' && process.env?.API_KEY) || '';
+  // 优先尝试直接读取替换后的值，如果没有替换成功，尝试读取 process.env（本地环境）
+  if (API_KEY_VALUE && API_KEY_VALUE !== "YOUR_API_KEY_PLACEHOLDER") {
+    return API_KEY_VALUE;
+  }
+  try {
+    // @ts-ignore
+    return (typeof process !== 'undefined' && process.env?.API_KEY) || '';
+  } catch {
+    return '';
+  }
 };
 
 export const analyzeFinances = async (transactions: Transaction[]) => {
   const apiKey = getApiKey();
   
   if (!apiKey || apiKey === "YOUR_API_KEY_PLACEHOLDER") {
-    return "⚠️ 缺少 API Key！\n\n【配置方法】：\n1. 登录 Cloudflare 控制台\n2. 进入项目 Settings -> Environment variables\n3. 添加变量 API_KEY\n4. 在 Build Command 填写：sed -i \"s/YOUR_API_KEY_PLACEHOLDER/\"$API_KEY\"/g\" services/geminiService.ts\n5. 重新部署。";
+    return "⚠️ 账本未关联 AI 服务。\n\n【小白配置指南】：\n1. 在 Cloudflare Pages 变量设置中添加 API_KEY。\n2. 确保 Build Command 设置为 npm run build。\n3. 重新部署以激活 AI 助手。";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -25,11 +31,11 @@ export const analyzeFinances = async (transactions: Transaction[]) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `你是一个专业的家庭理财管家。这是我家的账单：\n${summary}\n\n请分析消费结构，指出不合理支出，并给出具体的省钱建议。请用活泼的口吻，多用 Emoji，300字以内。`,
+      contents: `你是一个专业的家庭理财管家。这是我家的账目数据：\n${summary}\n\n请分析支出结构，指出潜在的浪费，并给出省钱建议。请用亲切的口吻，多用 Emoji，300字以内。`,
     });
-    return response.text || "AI 忙碌中，请稍后再试。";
+    return response.text || "AI 正在思考，请稍后再试。";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "分析失败：请检查 API Key 是否有效或网络是否畅通。";
+    return "分析请求失败。请检查 API Key 权限或网络连接。";
   }
 };
