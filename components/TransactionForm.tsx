@@ -1,20 +1,27 @@
 
 import React, { useState, useEffect } from 'react';
-import { CATEGORIES, FAMILY_MEMBERS } from '../constants.tsx';
-import { TransactionType, Transaction } from '../types';
+import { TransactionType, Transaction, Category, FamilyMember } from '../types';
 
 interface Props {
   initialData?: Transaction;
+  categories: Category[];
+  members: FamilyMember[];
+  onAddCategory: (cat: Category) => void;
   onAdd: (transaction: Transaction) => void;
   onClose: () => void;
 }
 
-const TransactionForm: React.FC<Props> = ({ initialData, onAdd, onClose }) => {
+const TransactionForm: React.FC<Props> = ({ initialData, categories, members, onAddCategory, onAdd, onClose }) => {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
-  const [category, setCategory] = useState(CATEGORIES[0].name);
+  const [category, setCategory] = useState(categories[0]?.name || '');
   const [description, setDescription] = useState('');
-  const [memberId, setMemberId] = useState(FAMILY_MEMBERS[0].id);
+  const [memberId, setMemberId] = useState(members[0]?.id || '');
+
+  // New Category State
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('✨');
 
   useEffect(() => {
     if (initialData) {
@@ -30,7 +37,7 @@ const TransactionForm: React.FC<Props> = ({ initialData, onAdd, onClose }) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount))) return;
 
-    const member = FAMILY_MEMBERS.find(m => m.id === memberId);
+    const member = members.find(m => m.id === memberId);
 
     const transactionData: Transaction = {
       id: initialData ? initialData.id : Math.random().toString(36).substr(2, 9),
@@ -45,6 +52,20 @@ const TransactionForm: React.FC<Props> = ({ initialData, onAdd, onClose }) => {
 
     onAdd(transactionData);
     onClose();
+  };
+
+  const handleCreateCategory = () => {
+    if (!newCatName.trim()) return;
+    const newCat: Category = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newCatName.trim(),
+      icon: newCatIcon || '✨',
+      color: 'bg-blue-500'
+    };
+    onAddCategory(newCat);
+    setCategory(newCat.name);
+    setIsAddingCategory(false);
+    setNewCatName('');
   };
 
   return (
@@ -96,13 +117,22 @@ const TransactionForm: React.FC<Props> = ({ initialData, onAdd, onClose }) => {
 
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">分类</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex justify-between items-center">
+                分类
+                <button 
+                  type="button" 
+                  onClick={() => setIsAddingCategory(true)}
+                  className="text-[10px] text-blue-600 hover:underline"
+                >
+                  + 自定义
+                </button>
+              </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 appearance-none"
               >
-                {CATEGORIES.map(c => (
+                {categories.map(c => (
                   <option key={c.id} value={c.name}>{c.icon} {c.name}</option>
                 ))}
               </select>
@@ -114,7 +144,7 @@ const TransactionForm: React.FC<Props> = ({ initialData, onAdd, onClose }) => {
                 onChange={(e) => setMemberId(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 appearance-none"
               >
-                {FAMILY_MEMBERS.map(m => (
+                {members.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
@@ -140,6 +170,49 @@ const TransactionForm: React.FC<Props> = ({ initialData, onAdd, onClose }) => {
           </button>
         </form>
       </div>
+
+      {/* Sub-modal for adding category */}
+      {isAddingCategory && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="w-full max-w-xs bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in duration-200">
+            <h3 className="text-lg font-bold">新增分类</h3>
+            <div className="space-y-2">
+              <label className="text-xs text-slate-500">图标 (Emoji)</label>
+              <input 
+                type="text" 
+                value={newCatIcon} 
+                onChange={e => setNewCatIcon(e.target.value)} 
+                className="w-full p-2 bg-slate-100 dark:bg-slate-900 rounded-lg text-center text-xl"
+                maxLength={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-slate-500">分类名称</label>
+              <input 
+                type="text" 
+                placeholder="如: 宠物" 
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                className="w-full p-2 bg-slate-100 dark:bg-slate-900 rounded-lg"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsAddingCategory(false)}
+                className="flex-1 py-2 text-slate-500 font-medium"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleCreateCategory}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-xl font-bold"
+              >
+                添加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

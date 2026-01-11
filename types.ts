@@ -28,3 +28,13 @@ export interface Category {
   icon: string;
   color: string;
 }
+
+export interface Ledger {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  members: FamilyMember[];
+  categories: Category[];
+  transactions: Transaction[];
+}
