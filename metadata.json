@@ -1,0 +1,7 @@
+{
+  "name": "Copy of FamilyLedger - 智能家庭记账本",
+  "description": "一个优雅的家庭记账应用程序，支持实时收支统计、AI智能分析和家庭成员共享模拟。具备精美的图表展示和深色模式适配。",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
